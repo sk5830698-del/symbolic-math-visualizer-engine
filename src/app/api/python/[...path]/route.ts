@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-async function handleProxy(req: NextRequest, params: { path: string[] }) {
-    // Hardcoded production backup fallback direct string me hai ab
+async function handleProxy(req: NextRequest, rawParams: any) {
+    // Next.js production build fail-safe: await params if it's a promise
+    const params = await rawParams;
+    const pathArray = params?.path || [];
+    
+    // Fallback production URL direct hardcoded string backup ke sath
     const FASTAPI_BASE = process.env.FASTAPI_URL || process.env.NEXT_PUBLIC_API_BASE || "https://symbolic-math-backend.onrender.com";
     
-    const subPath = (params.path || []).join('/');
+    const subPath = pathArray.join('/');
     const { searchParams } = new URL(req.url);
     const qs = searchParams.toString();
     
@@ -36,18 +40,18 @@ async function handleProxy(req: NextRequest, params: { path: string[] }) {
     }
 }
 
-export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
+export async function GET(req: NextRequest, { params }: { params: any }) {
     return handleProxy(req, params);
 }
 
-export async function POST(req: NextRequest, { params }: { params: { path: string[] } }) {
+export async function POST(req: NextRequest, { params }: { params: any }) {
     return handleProxy(req, params);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { path: string[] } }) {
+export async function PUT(req: NextRequest, { params }: { params: any }) {
     return handleProxy(req, params);
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { path: string[] } }) {
+export async function DELETE(req: NextRequest, { params }: { params: any }) {
     return handleProxy(req, params);
 }
