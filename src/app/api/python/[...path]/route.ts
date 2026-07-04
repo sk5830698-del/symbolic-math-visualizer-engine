@@ -7,7 +7,8 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 
-const FASTAPI_BASE = "http://127.0.0.1:8000";
+const FASTAPI_BASE =
+  process.env.FASTAPI_URL || "http://127.0.0.1:8000";
 
 async function proxyRequest(
   req: NextRequest,
