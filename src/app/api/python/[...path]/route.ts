@@ -1,38 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function NEXT_METHOD(req: NextRequest, { params }: { params: { path: string[] } }) {
-    // Falls back seamlessly if any env variable is missing
+async function handleProxy(req: NextRequest, params: { path: string[] }) {
+    // Hardcoded production backup fallback direct string me hai ab
     const FASTAPI_BASE = process.env.FASTAPI_URL || process.env.NEXT_PUBLIC_API_BASE || "https://symbolic-math-backend.onrender.com";
     
-    const subPath = params.path.join('/');
+    const subPath = (params.path || []).join('/');
     const { searchParams } = new URL(req.url);
     const qs = searchParams.toString();
     
     const targetUrl = `${FASTAPI_BASE}/${subPath}${qs ? `?${qs}` : ''}`;
 
     try {
-        let options: RequestInit = {
-            method: req.method,
-            headers: { 'Content-Type': 'application/json' }
-        };
-
-        // Pass body only for POST/PUT requests safely
-        if (req.method !== 'GET' && req.method !== 'HEAD') {
-            const rawBody = await req.text();
-            options.body = rawBody;
+        const method = req.method;
+        const headers = { 'Content-Type': 'application/json' };
+        
+        let body: string | undefined = undefined;
+        if (method !== 'GET' && method !== 'HEAD') {
+            body = await req.text();
         }
         
-        const response = await fetch(targetUrl, options);
+        const response = await fetch(targetUrl, {
+            method,
+            headers,
+            body
+        });
+
         const data = await response.json();
-        
         return NextResponse.json(data);
     } catch (error: any) {
-        console.error("[Whiteboard Proxy] Failed to reach FastAPI:", error.message);
+        console.error("[Whiteboard Proxy] Error:", error?.message || error);
         return NextResponse.json(
-            { error: "compute_server_unreachable", message: error.message },
+            { error: "compute_server_unreachable", message: error?.message || "Connection failed" },
             { status: 502 }
         );
     }
 }
 
-export { NEXT_METHOD as GET, NEXT_METHOD as POST, NEXT_METHOD as PUT, NEXT_METHOD as DELETE };
+export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
+    return handleProxy(req, params);
+}
+
+export async function POST(req: NextRequest, { params }: { params: { path: string[] } }) {
+    return handleProxy(req, params);
+}
+
+export async function PUT(req: NextRequest, { params }: { params: { path: string[] } }) {
+    return handleProxy(req, params);
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { path: string[] } }) {
+    return handleProxy(req, params);
+}
