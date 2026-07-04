@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════
- *   WHITEBOARD ENGINE — Frontend Script
- *   Fetch API ↔ FastAPI (127.0.0.1:8000) | KaTeX rendering
+ * WHITEBOARD ENGINE — Frontend Script
+ * Fetch API ↔ Dynamic Routing (Local/Render) | KaTeX rendering
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -10,14 +10,13 @@
 /* ─────────────────────────────  CONFIG  ──────────────────────────────── */
 
 /**
- * API_BASE is determined at runtime:
- *   • When opened via Next.js (same origin)  → /api/python
- *   • When opened directly as a file / local  → http://127.0.0.1:8000
+ * API_BASE is completely dynamic now:
+ * • On production (Render) → uses the exact window origin proxy
+ * • On local file/dev      → falls back smoothly
  */
-const IS_NEXT_ORIGIN = window.location.port === "3000" || window.location.pathname.startsWith("/whiteboard");
-const API_BASE = IS_NEXT_ORIGIN
-  ? "/api/python"          // Next.js reverse-proxy route
-  : "http://127.0.0.1:8000";  // Direct local FastAPI server
+const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? (window.location.port === "3000" ? "/api/python" : "http://127.0.0.1:8000")
+  : window.location.origin + "/api/python";
 
 /* Chalk colours cycle through step cards */
 const CHALK_COLORS = [
@@ -146,7 +145,6 @@ function updatePreview() {
   const raw = exprInput.value.trim();
   if (!raw) { previewKatex.textContent = ""; return; }
 
-  // Simple heuristic conversions for preview only
   let tex = raw
     .replace(/\*\*/g, "^")
     .replace(/\*/g, "\\cdot ")
@@ -182,7 +180,7 @@ async function checkApiHealth() {
     statusText.textContent = "API Offline";
     showError(
       `Cannot reach the compute server at ${API_BASE}.\n` +
-      "Run: cd backend && python main.py"
+      "Please wait a few seconds for cold start or check backend deployment."
     );
   }
 }
@@ -204,7 +202,6 @@ function updateOptionVisibility() {
   show("opt-point",     !!opts.point);
   show("opt-direction", !!opts.direction);
 
-  // Adjust order label
   if (op === "series") {
     orderInput.parentElement.querySelector(".field-label").textContent = "Number of Terms";
     orderInput.value = orderInput.value || "6";
@@ -220,7 +217,6 @@ function updateOptionVisibility() {
 ══════════════════════════════════════════════════════════════════════ */
 
 function buildExamples() {
-  // Show a curated subset — 8 examples covering all categories
   const curated = [
     EXAMPLES.find(e => e.op === "derivative"),
     EXAMPLES.find(e => e.op === "integral"),
@@ -262,7 +258,6 @@ function loadExample(ex) {
   updatePreview();
   clearOutput();
 
-  // Auto-solve after a short delay (nice UX)
   setTimeout(() => solveBtn.click(), 150);
 }
 
@@ -308,15 +303,12 @@ function showResult(data) {
   lastResultLatex = data.result_latex;
   copyBtn.disabled = false;
 
-  // Meta row
   resultMeta.textContent = `${data.operation.replace(/_/g, " ").toUpperCase()}  ·  ${data.expression}`;
   resultHeader.classList.remove("hidden");
 
-  // Final answer
   resultFinal.innerHTML = "";
   renderKaTeX(resultFinal, data.result_latex, true);
 
-  // Steps
   if (data.steps && data.steps.length > 0) {
     stepsCount.textContent = `${data.steps.length} step${data.steps.length !== 1 ? "s" : ""}`;
     stepsList.innerHTML = "";
@@ -387,7 +379,7 @@ async function solve() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30_000),  // 30 s timeout for heavy computations
+      signal: AbortSignal.timeout(30_000),
     });
 
     const data = await res.json();
@@ -404,8 +396,8 @@ async function solve() {
       showError("Request timed out — the computation may be too complex. Try a simpler expression.");
     } else if (err.name === "TypeError") {
       showError(
-        `Network error — cannot reach ${API_BASE}.\n` +
-        "Make sure the FastAPI server is running:\n  cd backend && python main.py"
+        `Network error — cannot reach compute server at ${API_BASE}.\n` +
+        "Make sure the backend is active on Render or running locally."
       );
     } else {
       showError(`Unexpected error: ${err.message}`);
@@ -457,7 +449,6 @@ async function copyLatex() {
     copyBtn.textContent = "Copied ✓";
     setTimeout(() => { copyBtn.textContent = "Copy LaTeX"; }, 2000);
   } catch {
-    // Fallback
     const ta = document.createElement("textarea");
     ta.value = lastResultLatex;
     document.body.appendChild(ta);
@@ -485,17 +476,14 @@ function escHtml(str) {
    EVENT WIRING
 ══════════════════════════════════════════════════════════════════════ */
 
-// Operation change
 opSelect.addEventListener("change", () => {
   updateOptionVisibility();
   clearOutput();
   showIdle();
 });
 
-// Expression input
 exprInput.addEventListener("input", updatePreview);
 
-// Keyboard shortcut: Cmd+Enter / Ctrl+Enter to solve
 exprInput.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
     e.preventDefault();
@@ -503,18 +491,15 @@ exprInput.addEventListener("keydown", (e) => {
   }
 });
 
-// Buttons
 solveBtn .addEventListener("click", solve);
 clearBtn .addEventListener("click", () => { exprInput.value = ""; updatePreview(); showIdle(); });
 copyBtn  .addEventListener("click", copyLatex);
 themeToggle.addEventListener("click", toggleTheme);
 
-// Modal
 structBtn  .addEventListener("click", () => structModal.classList.remove("hidden"));
 modalClose .addEventListener("click", () => structModal.classList.add("hidden"));
 structModal.addEventListener("click", (e) => { if (e.target === structModal) structModal.classList.add("hidden"); });
 
-// Escape key closes modal
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") structModal.classList.add("hidden");
 });
@@ -530,10 +515,8 @@ document.addEventListener("keydown", (e) => {
   showIdle();
   checkApiHealth();
 
-  // Re-check health every 30 s
   setInterval(checkApiHealth, 30_000);
 
-  // Focus expression input
   setTimeout(() => exprInput.focus(), 300);
 
   console.log(
