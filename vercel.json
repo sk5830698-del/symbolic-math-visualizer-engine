@@ -1,0 +1,17 @@
+{
+  "services": {
+    "frontend": {
+      "root": ".",
+      "framework": "nextjs"
+    },
+    "backend": {
+      "root": "backend"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/python/:path*",
+      "destination": "/backend/:path*"
+    }
+  ]
+}
