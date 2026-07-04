@@ -1,0 +1,17 @@
+# ═══════════════════════════════════════════════════════════════
+#   Whiteboard Engine — Python Backend Dependencies
+#   Install: pip install -r requirements.txt
+#   Run:     python main.py  (or uvicorn main:app --reload)
+# ═══════════════════════════════════════════════════════════════
+
+# ── Web Framework ────────────────────────────────────────────
+fastapi==0.139.0           # ASGI web framework for Python
+uvicorn[standard]==0.29.0  # ASGI server (production-grade)
+
+# ── Symbolic Computation ─────────────────────────────────────
+sympy==1.13.3              # Computer Algebra System (CAS)
+mpmath==1.3.0              # Arbitrary-precision arithmetic (SymPy dep)
+
+# ── Data Validation ──────────────────────────────────────────
+pydantic==2.7.1            # Request/response validation
+python-multipart==0.0.9    # Multipart form data parsing

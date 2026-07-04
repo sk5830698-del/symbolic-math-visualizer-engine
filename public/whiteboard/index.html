@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Whiteboard Engine — Interactive Math Visualizer</title>
+
+  <!-- KaTeX — ultra-fast LaTeX rendering via CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters:[
+            {left:'$$',right:'$$',display:true},
+            {left:'$',right:'$',display:false}
+          ]})"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<!-- ═══════════════════════  TOP NAVIGATION BAR  ══════════════════════════ -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span class="brand-icon">∂</span>
+    <div class="brand-text">
+      <span class="brand-name">Whiteboard Engine</span>
+      <span class="brand-tag">Advanced Math Visualizer</span>
+    </div>
+  </div>
+  <div class="navbar-right">
+    <span class="api-badge" id="api-status">
+      <span class="status-dot"></span>
+      <span class="status-text">Connecting…</span>
+    </span>
+    <button class="btn-icon" id="theme-toggle" title="Toggle theme" aria-label="Toggle dark/light theme">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════  HERO BANNER  ════════════════════════════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <p class="hero-eyebrow">Symbolic Computation Engine</p>
+    <h1 class="hero-title">
+      Solve. Visualize.<br />
+      <span class="gradient-text">Understand the Steps.</span>
+    </h1>
+    <p class="hero-sub">
+      Type any mathematical expression — derivatives, integrals, Laplace transforms,
+      ODEs, series expansions, and more. The engine breaks down every computation
+      into transparent, teachable steps rendered in beautiful LaTeX.
+    </p>
+  </div>
+  <div class="hero-grid-lines" aria-hidden="true"></div>
+</header>
+
+<!-- ═══════════════════════  MAIN WORKSPACE  ═════════════════════════════ -->
+<main class="workspace">
+
+  <!-- ──────────────  LEFT PANEL: INPUT & CONTROLS  ──────────────────── -->
+  <section class="panel panel-input" id="input-panel">
+    <div class="panel-header">
+      <span class="panel-icon">⌨</span>
+      <h2 class="panel-title">Expression Input</h2>
+    </div>
+
+    <!-- Operation Selector -->
+    <div class="field-group">
+      <label class="field-label" for="op-select">Operation</label>
+      <div class="select-wrapper">
+        <select id="op-select" class="field-select">
+          <optgroup label="Calculus">
+            <option value="derivative">∂  Derivative (d/dx)</option>
+            <option value="integral">∫  Indefinite Integral</option>
+            <option value="definite_integral">∫ₐᵇ Definite Integral</option>
+            <option value="limit">lim Limit Evaluation</option>
+            <option value="series">∑  Taylor / Maclaurin Series</option>
+            <option value="ode">y″  ODE Solver (dsolve)</option>
+          </optgroup>
+          <optgroup label="Transforms">
+            <option value="laplace">ℒ  Laplace Transform</option>
+            <option value="inverse_laplace">ℒ⁻¹ Inverse Laplace</option>
+          </optgroup>
+          <optgroup label="Algebra">
+            <option value="simplify">✦  Simplify Expression</option>
+            <option value="factor">◆  Factor Polynomial</option>
+            <option value="expand">◇  Expand Expression</option>
+          </optgroup>
+          <optgroup label="Number Theory">
+            <option value="cyclic_decimal">⟳  Cyclic / Repeating Decimal</option>
+          </optgroup>
+          <optgroup label="Linear Algebra">
+            <option value="matrix_det">■  Matrix Determinant</option>
+            <option value="matrix_inv">■⁻¹ Matrix Inverse</option>
+            <option value="matrix_eigen">λ  Eigenvalues &amp; Eigenvectors</option>
+          </optgroup>
+        </select>
+        <span class="select-arrow">▾</span>
+      </div>
+    </div>
+
+    <!-- Expression Input -->
+    <div class="field-group">
+      <label class="field-label" for="expr-input">
+        Mathematical Expression
+        <span class="field-hint">Python/SymPy notation — e.g. <code>x**3 + sin(x)</code></span>
+      </label>
+      <div class="expr-input-wrapper">
+        <textarea
+          id="expr-input"
+          class="field-textarea"
+          rows="3"
+          placeholder="e.g.  x**3 + sin(x)*exp(-x)"
+          spellcheck="false"
+          autocorrect="off"
+          autocapitalize="off"
+        ></textarea>
+        <div class="expr-preview" id="expr-preview">
+          <span class="preview-label">Live preview:</span>
+          <span id="preview-katex"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic Options Row -->
+    <div class="options-grid" id="options-grid">
+
+      <!-- Variable -->
+      <div class="field-group" id="opt-variable">
+        <label class="field-label" for="var-input">Variable</label>
+        <input id="var-input" class="field-input" type="text" value="x" maxlength="4" />
+      </div>
+
+      <!-- Order -->
+      <div class="field-group hidden" id="opt-order">
+        <label class="field-label" for="order-input">Order / Terms</label>
+        <input id="order-input" class="field-input" type="number" value="1" min="1" max="10" />
+      </div>
+
+      <!-- Lower bound -->
+      <div class="field-group hidden" id="opt-lower">
+        <label class="field-label" for="lower-input">Lower Bound <i>a</i></label>
+        <input id="lower-input" class="field-input" type="text" placeholder="0" />
+      </div>
+
+      <!-- Upper bound -->
+      <div class="field-group hidden" id="opt-upper">
+        <label class="field-label" for="upper-input">Upper Bound <i>b</i></label>
+        <input id="upper-input" class="field-input" type="text" placeholder="1" />
+      </div>
+
+      <!-- Expansion point -->
+      <div class="field-group hidden" id="opt-point">
+        <label class="field-label" for="point-input">Expand Around</label>
+        <input id="point-input" class="field-input" type="text" value="0" />
+      </div>
+
+      <!-- Limit direction -->
+      <div class="field-group hidden" id="opt-direction">
+        <label class="field-label" for="dir-select">Direction</label>
+        <div class="select-wrapper">
+          <select id="dir-select" class="field-select small">
+            <option value="+">x → a⁺ (right)</option>
+            <option value="-">x → a⁻ (left)</option>
+            <option value="+-">x → a (two-sided)</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Quick-Insert Symbols -->
+    <div class="quickbar" id="quickbar">
+      <span class="quickbar-label">Quick insert:</span>
+      <div class="quickbar-btns">
+        <button class="qbtn" data-insert="**2" title="Square">x²</button>
+        <button class="qbtn" data-insert="**3" title="Cube">x³</button>
+        <button class="qbtn" data-insert="sqrt(" title="Square root">√</button>
+        <button class="qbtn" data-insert="sin(" title="Sine">sin</button>
+        <button class="qbtn" data-insert="cos(" title="Cosine">cos</button>
+        <button class="qbtn" data-insert="tan(" title="Tangent">tan</button>
+        <button class="qbtn" data-insert="exp(" title="Exponential">eˣ</button>
+        <button class="qbtn" data-insert="log(" title="Natural log">ln</button>
+        <button class="qbtn" data-insert="pi" title="Pi">π</button>
+        <button class="qbtn" data-insert="oo" title="Infinity">∞</button>
+        <button class="qbtn" data-insert="Rational(" title="Fraction">p/q</button>
+        <button class="qbtn" data-insert="Matrix([[" title="Matrix">[ ]</button>
+      </div>
+    </div>
+
+    <!-- Solve Button -->
+    <button class="btn-solve" id="solve-btn" aria-label="Solve expression">
+      <span class="btn-icon-left">▶</span>
+      <span class="btn-label">Solve</span>
+      <span class="btn-shortcut">⌘ Enter</span>
+    </button>
+
+    <!-- Example Gallery -->
+    <div class="examples-section">
+      <p class="examples-title">Examples — click to load</p>
+      <div class="examples-grid" id="examples-grid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────  RIGHT PANEL: WHITEBOARD OUTPUT  ────────────────── -->
+  <section class="panel panel-output" id="output-panel">
+    <div class="panel-header">
+      <span class="panel-icon">🖊</span>
+      <h2 class="panel-title">Whiteboard</h2>
+      <div class="panel-header-right">
+        <button class="btn-sm" id="copy-btn" disabled>Copy LaTeX</button>
+        <button class="btn-sm" id="clear-btn">Clear</button>
+      </div>
+    </div>
+
+    <!-- Idle State -->
+    <div class="idle-state" id="idle-state">
+      <div class="idle-icon">∫</div>
+      <p class="idle-title">Enter an expression to get started</p>
+      <p class="idle-sub">Choose an operation on the left, type your expression, and hit <strong>Solve</strong></p>
+    </div>
+
+    <!-- Loader -->
+    <div class="loader hidden" id="loader">
+      <div class="loader-ring"></div>
+      <p class="loader-text">Computing symbolic solution…</p>
+    </div>
+
+    <!-- Error Banner -->
+    <div class="error-banner hidden" id="error-banner">
+      <span class="error-icon">⚠</span>
+      <span class="error-msg" id="error-msg"></span>
+    </div>
+
+    <!-- Result Header -->
+    <div class="result-header hidden" id="result-header">
+      <div class="result-meta" id="result-meta"></div>
+      <div class="result-final" id="result-final"></div>
+    </div>
+
+    <!-- Steps Container -->
+    <div class="steps-container hidden" id="steps-container">
+      <div class="steps-title-row">
+        <span class="steps-title">Step-by-Step Solution</span>
+        <span class="steps-count" id="steps-count"></span>
+      </div>
+      <ol class="steps-list" id="steps-list"></ol>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ═══════════════════════  STRUCTURE DOCUMENTATION MODAL  ══════════════ -->
+<div class="modal-overlay hidden" id="struct-modal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Project File Structure</h3>
+      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <pre class="file-tree"><code>whiteboard-engine/
+│
+├── backend/                    ← Python FastAPI + SymPy server
+│   ├── main.py                 ← Core server (127.0.0.1:8000)
+│   └── requirements.txt        ← Python dependencies
+│
+├── public/
+│   └── whiteboard/             ← Vanilla frontend client
+│       ├── index.html          ← App shell + KaTeX CDN
+│       ├── style.css           ← Dark-mode whiteboard theme
+│       └── script.js           ← Fetch logic + KaTeX renderer
+│
+└── src/
+    └── app/
+        └── api/
+            └── python/
+                └── route.ts    ← Next.js proxy → FastAPI</code></pre>
+
+      <div class="struct-desc">
+        <h4>Start Instructions</h4>
+        <ol>
+          <li>Install Python deps: <code>cd backend &amp;&amp; pip install -r requirements.txt</code></li>
+          <li>Start backend: <code>python main.py</code> → <em>http://127.0.0.1:8000</em></li>
+          <li>Open frontend: <code>public/whiteboard/index.html</code> in a browser</li>
+          <li>Or use the Next.js proxy at <code>/api/python/</code></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════  FOOTER  ═════════════════════════════════════ -->
+<footer class="footer">
+  <span>Whiteboard Engine © 2025 — FastAPI · SymPy · KaTeX</span>
+  <button class="footer-link" id="struct-btn">View File Structure</button>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
