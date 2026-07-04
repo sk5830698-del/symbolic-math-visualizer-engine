@@ -1,83 +1,38 @@
-/**
- * ═══════════════════════════════════════════════════════════════
- *   Whiteboard Engine — Next.js ↔ FastAPI Reverse Proxy
- *   Routes:  /api/python/*  →  http://127.0.0.1:8000/*
- * ═══════════════════════════════════════════════════════════════
- */
+import { NextRequest, NextResponse } from 'next/server';
 
-import { type NextRequest, NextResponse } from "next/server";
+export async function NEXT_METHOD(req: NextRequest, { params }: { params: { path: string[] } }) {
+    // Falls back seamlessly if any env variable is missing
+    const FASTAPI_BASE = process.env.FASTAPI_URL || process.env.NEXT_PUBLIC_API_BASE || "https://symbolic-math-backend.onrender.com";
+    
+    const subPath = params.path.join('/');
+    const { searchParams } = new URL(req.url);
+    const qs = searchParams.toString();
+    
+    const targetUrl = `${FASTAPI_BASE}/${subPath}${qs ? `?${qs}` : ''}`;
 
-const FASTAPI_BASE =
-  process.env.FASTAPI_URL || "http://127.0.0.1:8000";
+    try {
+        let options: RequestInit = {
+            method: req.method,
+            headers: { 'Content-Type': 'application/json' }
+        };
 
-async function proxyRequest(
-  req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
-): Promise<NextResponse> {
-  const { path } = await params;
-  const subPath = path ? `/${path.join("/")}` : "/";
-
-  const { searchParams } = new URL(req.url);
-  const qs = searchParams.toString();
-  const targetUrl = `${FASTAPI_BASE}${subPath}${qs ? `?${qs}` : ""}`;
-
-  let body: BodyInit | undefined;
-  if (["POST", "PUT", "PATCH"].includes(req.method)) {
-    body = await req.arrayBuffer();
-  }
-
-  const forwardHeaders = new Headers();
-  req.headers.forEach((value, key) => {
-    if (!["host", "connection", "transfer-encoding"].includes(key.toLowerCase())) {
-      forwardHeaders.set(key, value);
+        // Pass body only for POST/PUT requests safely
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+            const rawBody = await req.text();
+            options.body = rawBody;
+        }
+        
+        const response = await fetch(targetUrl, options);
+        const data = await response.json();
+        
+        return NextResponse.json(data);
+    } catch (error: any) {
+        console.error("[Whiteboard Proxy] Failed to reach FastAPI:", error.message);
+        return NextResponse.json(
+            { error: "compute_server_unreachable", message: error.message },
+            { status: 502 }
+        );
     }
-  });
-
-  try {
-    const upstream = await fetch(targetUrl, {
-      method: req.method,
-      headers: forwardHeaders,
-      body,
-    });
-
-    const responseHeaders = new Headers();
-    upstream.headers.forEach((value, key) => {
-      if (!["transfer-encoding", "connection"].includes(key.toLowerCase())) {
-        responseHeaders.set(key, value);
-      }
-    });
-    responseHeaders.set("x-proxied-by", "whiteboard-engine-next");
-
-    const responseBody = await upstream.arrayBuffer();
-
-    return new NextResponse(responseBody, {
-      status: upstream.status,
-      statusText: upstream.statusText,
-      headers: responseHeaders,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown proxy error";
-    console.error("[Whiteboard Proxy] Failed to reach FastAPI:", message);
-
-    return NextResponse.json(
-      {
-        error: "compute_server_unreachable",
-        detail:
-          `Cannot reach FastAPI at ${FASTAPI_BASE}. ` +
-          "Start the backend: cd backend && python main.py",
-        upstream_error: message,
-      },
-      { status: 502 }
-    );
-  }
 }
 
-export const GET     = proxyRequest;
-export const POST    = proxyRequest;
-export const PUT     = proxyRequest;
-export const PATCH   = proxyRequest;
-export const DELETE  = proxyRequest;
-export const HEAD    = proxyRequest;
-export const OPTIONS = proxyRequest;
-
-export const dynamic = "force-dynamic";
+export { NEXT_METHOD as GET, NEXT_METHOD as POST, NEXT_METHOD as PUT, NEXT_METHOD as DELETE };
